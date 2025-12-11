@@ -58,10 +58,10 @@ jobs:
       id: composer-cache
       uses: actions/cache@v4
       with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        path: ~/.composer/cache
+        key: ${{ runner.os }}-php-composer-${{ hashFiles('**/composer.lock') }}
         restore-keys: |
-          ${{ runner.os }}-php-
+          ${{ runner.os }}-php-composer-
 
     - name: Install WP-CLI
       run: |
@@ -73,6 +73,13 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x build.sh
+
+    - name: Ensure workspace permissions
+      run: |
+        # Ensure the workspace is writable by the current user
+        # This fixes permission issues that can occur with cached files
+        sudo chown -R $USER:$USER . || true
+        chmod -R u+w . || true
 
     - name: Run WordPress build
       run: ./build.sh
