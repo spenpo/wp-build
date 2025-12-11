@@ -63,9 +63,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-php-
 
-    - name: Install Composer dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest
-
     - name: Install WP-CLI
       run: |
         curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
@@ -76,9 +73,6 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x build.sh
-        chmod +x migrations.sh
-        chmod +x image-manager.sh
-        chmod +x install-hooks.sh
 
     - name: Run WordPress build
       run: ./build.sh
@@ -151,4 +145,3 @@ jobs:
         if [ -d "wordpress/wp-content/plugins" ]; then
           echo "- Plugins: $(ls -1 wordpress/wp-content/plugins | wc -l) installed" >> $GITHUB_STEP_SUMMARY
         fi
-        
