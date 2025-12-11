@@ -3,10 +3,10 @@
     "description": "wordpress automation",
     "type": "project",
     "require": {
-        "roots/wordpress": "6.8",
+        "roots/wordpress": "^6.8",
         "php": "^8.3",
         "wp-cli/wp-cli": "^2.12",
-        "wpackagist-theme/twentytwentyfive": "@dev",
+        "wpackagist-theme/twentytwentyfive": "^1.0",
         "spenpo/twentytwentyfive-wpbuild": "dev-main",
         "aws/aws-sdk-php": "^3.0"
     },
