@@ -14,7 +14,7 @@ cd "$WORDPRESS_PATH"
 
 # Check if migrations table exists
 echo "Checking if migrations table exists"
-migrations_table_exists=$(wp db query "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'dfs_migrations'" --path="$WORDPRESS_PATH" --skip-column-names)
+migrations_table_exists=$(wp db query "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'wp_migrations'" --path="$WORDPRESS_PATH" --skip-column-names)
 
 if [ "$migrations_table_exists" -eq "0" ]; then
     echo "Migrations table does not exist, creating it"
@@ -27,13 +27,24 @@ fi
 # Function to check if migration has been applied
 check_migration_applied() {
     local migration_name="$1"
-    wp db query "SELECT COUNT(*) FROM dfs_migrations WHERE name='$migration_name'" --path="$WORDPRESS_PATH" --skip-column-names
+    local output count
+
+    output=$(wp db query "SELECT COUNT(*) FROM wp_migrations WHERE name='$migration_name'" --path="$WORDPRESS_PATH" --skip-column-names 2>&1)
+    count=$(printf '%s\n' "$output" | head -n 1 | tr -d $'\r' | xargs)
+
+    if ! [[ "$count" =~ ^[0-9]+$ ]]; then
+        echo "Warning: Unexpected response while checking migration $migration_name: $output" >&2
+        echo "0"
+        return 1
+    fi
+
+    echo "$count"
 }
 
 # Function to mark migration as applied
 mark_migration_applied() {
     local migration_name="$1"
-    wp db query "INSERT INTO dfs_migrations (name) VALUES ('$migration_name')" --path="$WORDPRESS_PATH"
+    wp db query "INSERT INTO wp_migrations (name) VALUES ('$migration_name')" --path="$WORDPRESS_PATH"
 }
 
 # Function to process plugin or theme activation
@@ -102,15 +113,52 @@ process_sql_migration() {
     fi
 }
 
+# Function to validate and extract date prefix from migration name
+validate_date_prefix() {
+    local migration_name="$1"
+    local basename="${migration_name##*/}"
+    
+    # Check if migration starts with YYYYMMDD- format (8 digits followed by hyphen)
+    # Optional sequence number format: YYYYMMDD-001-description or YYYYMMDD-description
+    if [[ ! "$basename" =~ ^[0-9]{8}(-[0-9]{1,3})?- ]]; then
+        echo "Error: Migration '$migration_name' does not follow the required naming convention" >&2
+        echo "  Format: YYYYMMDD-description or YYYYMMDD-001-description (for multiple migrations per day)" >&2
+        return 1
+    fi
+    
+    return 0
+}
+
 # Step 1: Process plugin activation migrations first
 echo ""
 echo "=== Step 1: Processing Plugin Activations ==="
 shopt -s nullglob
-plugin_migrations=(./migrations/activate-*)
+# Match migrations with date prefix (and optional sequence) followed by activate-
+# Pattern matches: 20251202-activate-* or 20251202-001-activate-*
+plugin_migrations=(./migrations/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-*activate-*)
 
+# Sort migrations by date prefix (YYYYMMDD) to ensure consistent ordering
 if [ ${#plugin_migrations[@]} -gt 0 ]; then
+    # Validate all migrations have date prefix
     for migration in "${plugin_migrations[@]}"; do
         migration_name="${migration##*/}"
+        if ! validate_date_prefix "$migration_name"; then
+            echo "Skipping invalid migration: $migration_name"
+            continue
+        fi
+    done
+    
+    # Sort by filename (date prefix ensures chronological order)
+    IFS=$'\n' sorted_plugin_migrations=($(sort <<<"${plugin_migrations[*]}"))
+    unset IFS
+    
+    for migration in "${sorted_plugin_migrations[@]}"; do
+        migration_name="${migration##*/}"
+        
+        # Validate date prefix format
+        if ! validate_date_prefix "$migration_name"; then
+            continue
+        fi
         
         # Check if migration has been applied
         applied=$(check_migration_applied "$migration_name")
@@ -138,11 +186,35 @@ echo "=== Step 2: Processing Data Migrations ==="
 sql_migrations=(./migrations/*.sql)
 
 if [ ${#sql_migrations[@]} -gt 0 ]; then
+    # Validate all migrations have date prefix (except seed.sql)
     for migration in "${sql_migrations[@]}"; do
         migration_name="${migration##*/}"
         
         # Skip seed.sql as it's handled separately
         if [[ "$migration_name" == "seed.sql" ]]; then
+            continue
+        fi
+        
+        if ! validate_date_prefix "$migration_name"; then
+            echo "Skipping invalid migration: $migration_name"
+            continue
+        fi
+    done
+    
+    # Sort by filename (date prefix ensures chronological order)
+    IFS=$'\n' sorted_sql_migrations=($(sort <<<"${sql_migrations[*]}"))
+    unset IFS
+    
+    for migration in "${sorted_sql_migrations[@]}"; do
+        migration_name="${migration##*/}"
+        
+        # Skip seed.sql as it's handled separately
+        if [[ "$migration_name" == "seed.sql" ]]; then
+            continue
+        fi
+        
+        # Validate date prefix format
+        if ! validate_date_prefix "$migration_name"; then
             continue
         fi
         

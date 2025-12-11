@@ -1,0 +1,154 @@
+name: WordPress Build & Automation
+
+on:
+  push:
+    branches: [ "main", "staging" ]
+  pull_request:
+    branches: [ "main", "staging" ]
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: read
+
+env:
+  PHP_VERSION: '8.3'
+  COMPOSER_NO_INTERACTION: 1
+
+jobs:
+  build:
+    name: Build WordPress
+    runs-on: ubuntu-latest
+
+    # services:
+    #   mysql:
+    #     image: mysql:8.0
+    #     env:
+    #       MYSQL_ROOT_PASSWORD: root
+    #       MYSQL_DATABASE: wordpress_test
+    #       MYSQL_USER: wordpress
+    #       MYSQL_PASSWORD: wordpress
+    #     ports:
+    #       - 3306:3306
+    #     options: >-
+    #       --health-cmd="mysqladmin ping"
+    #       --health-interval=10s
+    #       --health-timeout=5s
+    #       --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ env.PHP_VERSION }}
+        extensions: mbstring, xml, curl, zip, gd, mysql, mysqli
+        coverage: none
+
+    - name: Install Composer
+      uses: php-actions/composer@v6
+      with:
+        php_version: ${{ env.PHP_VERSION }}
+
+    - name: Validate composer.json
+      run: composer validate --strict
+
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v4
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
+
+    - name: Install Composer dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+
+    - name: Install WP-CLI
+      run: |
+        curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+        chmod +x wp-cli.phar
+        sudo mv wp-cli.phar /usr/local/bin/wp
+        wp --info
+
+    - name: Make scripts executable
+      run: |
+        chmod +x build.sh
+        chmod +x migrations.sh
+        chmod +x image-manager.sh
+        chmod +x install-hooks.sh
+
+    - name: Run WordPress build
+      run: ./build.sh
+      continue-on-error: false
+
+    - name: Verify build output
+      run: |
+        if [ ! -d "wordpress" ]; then
+          echo "❌ WordPress directory not created"
+          exit 1
+        fi
+        if [ ! -f "wordpress/index.php" ]; then
+          echo "❌ WordPress index.php not found"
+          exit 1
+        fi
+        echo "✅ WordPress build verified"
+
+    # - name: Setup WordPress configuration (for migrations)
+    #   run: |
+    #     # Create a minimal wp-config.php for migrations
+    #     cat > wordpress/wp-config.php << 'EOF'
+    #     <?php
+    #     define('DB_NAME', 'wordpress_test');
+    #     define('DB_USER', 'wordpress');
+    #     define('DB_PASSWORD', 'wordpress');
+    #     define('DB_HOST', '127.0.0.1:3306');
+    #     define('DB_CHARSET', 'utf8mb4');
+    #     define('DB_COLLATE', '');
+    #     $table_prefix = 'wp_';
+    #     define('WP_DEBUG', false);
+    #     define('WP_DEBUG_LOG', false);
+    #     define('WP_DEBUG_DISPLAY', false);
+    #     if (!defined('ABSPATH')) {
+    #       define('ABSPATH', __DIR__ . '/');
+    #     }
+    #     require_once ABSPATH . 'wp-settings.php';
+    #     EOF
+    #     echo "✅ WordPress configuration created"
+
+    - name: Set deployment path
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "DEPLOY_PATH=${{ secrets.WP_BUILD_PATH }}" >> $GITHUB_ENV
+        else
+          echo "DEPLOY_PATH=${{ secrets.WP_BUILD_PATH }}/${{ github.ref_name }}" >> $GITHUB_ENV
+        fi
+
+    - name: Deploy via Rsync
+      uses: burnett01/rsync-deployments@5.2.1
+      with:
+        switches: -avzr
+        path: wordpress/
+        remote_path: ${{ env.DEPLOY_PATH }}
+        remote_host: ${{ secrets.HOSTINGER_HOST }}
+        remote_user: ${{ secrets.HOSTINGER_USERNAME }}
+        remote_key: ${{ secrets.HOSTINGER_PRIVATE_KEY }}
+        remote_port: ${{ secrets.HOSTINGER_PORT }}
+
+    - name: Build summary
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ WordPress build completed successfully" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Build Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- WordPress installation: \`wordpress/\`" >> $GITHUB_STEP_SUMMARY
+        if [ -d "wordpress/wp-content/themes" ]; then
+          echo "- Themes: $(ls -1 wordpress/wp-content/themes | wc -l) installed" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -d "wordpress/wp-content/plugins" ]; then
+          echo "- Plugins: $(ls -1 wordpress/wp-content/plugins | wc -l) installed" >> $GITHUB_STEP_SUMMARY
+        fi
+        

@@ -1,8 +1,9 @@
 {
-    "name": "spenpo/twenty-twenty-five-child",
-    "description": "Twenty Twenty-Five Child Theme",
+    "name": "spenpo/twentytwentyfive-wpbuild",
+    "description": "Twenty Twenty-Five WP Build Child Theme",
     "type": "wordpress-theme",
     "license": "MIT",
+    "version": "dev-main",
     "authors": [
         {
             "name": "Spencer Pope",

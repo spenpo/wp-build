@@ -6,6 +6,9 @@ wordpress/wp-content/uploads/
 wordpress/
 wp-content/
 
+# Theme dependencies (managed via Composer)
+src/themes/hostinger-ai-theme/
+
 # Composer
 vendor/
 composer.lock

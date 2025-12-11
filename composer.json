@@ -1,20 +1,14 @@
 {
     "name": "spenpo/wp-build",
-    "description": "test building a wp site",
+    "description": "wordpress automation",
     "type": "project",
     "require": {
         "roots/wordpress": "6.8",
         "php": "^8.3",
         "wp-cli/wp-cli": "^2.12",
-        "wpackagist-plugin/woocommerce": "^10.0",
-        "wpackagist-plugin/contact-form-7": "^6.1",
-        "wpackagist-plugin/wordpress-seo": "^25.6",
-        "wpackagist-plugin/spenpo-resume": "^1.0",
-        "wpackagist-plugin/hello-dolly": "^1.7",
-        "wpackagist-theme/twentytwentyfive": "^1.0",
-        "spenpo/twenty-twenty-five-child": "dev-main",
-        "aws/aws-sdk-php": "^3.0",
-        "wpackagist-plugin/3d-flipbook-dflip-lite": "^2.3"
+        "wpackagist-theme/twentytwentyfive": "@dev",
+        "spenpo/twentytwentyfive-wpbuild": "dev-main",
+        "aws/aws-sdk-php": "^3.0"
     },
     "license": "MIT",
     "autoload": {
@@ -46,7 +40,7 @@
         },
         {
             "type": "path",
-            "url": "src/themes/twenty-twenty-five-child"
+            "url": "src/themes/twentytwentyfive-wpbuild"
         }
     ]
 }
