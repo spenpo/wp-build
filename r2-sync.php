@@ -30,7 +30,7 @@ class R2ImageSync {
         }
         
         // Validate required environment variables
-        $requiredVars = ['R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_ENDPOINT'];
+        $requiredVars = ['R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_ENDPOINT', 'R2_BUCKET_NAME'];
         $missingVars = [];
         
         foreach ($requiredVars as $var) {
@@ -46,7 +46,7 @@ class R2ImageSync {
             exit(1);
         }
         
-        $this->bucket = getenv('R2_BUCKET_NAME') ?: 'dealvault';
+        $this->bucket = getenv('R2_BUCKET_NAME');
         $this->localUploadsDir = 'src/uploads';
         $this->buildUploadsDir = 'wordpress/wp-content/uploads';
                 
