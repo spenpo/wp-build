@@ -50,7 +50,8 @@ mark_migration_applied() {
 # Function to process plugin or theme activation
 process_plugin_activation() {
     local migration_name="$1"
-    local plugin_name="${migration_name#activate-}"
+    # Remove date prefix (YYYYMMDD-) and optional sequence number (-001-), then remove activate- prefix
+    local plugin_name="${migration_name#*activate-}"
 
     # Check if it's a theme
     if wp theme is-installed "$plugin_name" --path="$WORDPRESS_PATH" --quiet; then

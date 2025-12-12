@@ -22,7 +22,7 @@ has_unsequenced=false
 
 # Check all migration files to find ones for today
 shopt -s nullglob
-for migration in "$MIGRATIONS_DIR"/*.sql; do
+for migration in "$MIGRATIONS_DIR"/*; do
     if [ -f "$migration" ]; then
         filename=$(basename "$migration")
         
@@ -79,15 +79,27 @@ fi
 # Remove any file extension if user included it
 description="${description%.sql}"
 
+# Check if the name starts with "activate-"
+if [[ "$description" == activate-* ]]; then
+    is_activation=true
+else
+    is_activation=false
+fi
+if [ "$is_activation" = true ]; then
+    extension=""
+else
+    extension=".sql"
+fi
+
 # Construct filename
 if [ $sequence_num -eq 0 ]; then
     # First migration of the day, no sequence number needed
-    filename="${TODAY}-${description}.sql"
+    filename="${TODAY}-${description}${extension}"
     sequence_str="000"
 else
     # Multiple migrations today, use sequence number
     sequence_str=$(printf "%03d" $sequence_num)
-    filename="${TODAY}-${sequence_str}-${description}.sql"
+    filename="${TODAY}-${sequence_str}-${description}${extension}"
 fi
 
 filepath="${MIGRATIONS_DIR}/${filename}"
