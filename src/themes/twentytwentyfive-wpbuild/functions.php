@@ -21,6 +21,6 @@
     wp_enqueue_style(
         'twentytwentyfive-wpbuild-style',
         get_stylesheet_uri(),
-        ['twentytwentyfive-wpbuild-style']
+        ['twentytwentyfive-style']
     );
 });
