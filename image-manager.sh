@@ -15,10 +15,6 @@ case "$1" in
         echo "📥 Downloading images from R2 to local..."
         php r2-sync.php download
         ;;
-    "sync")
-        echo "🔄 Syncing local changes to R2..."
-        php r2-sync.php sync
-        ;;
     "status")
         echo "📊 Checking image status..."
         echo "Local uploads directory: src/uploads/"

@@ -143,6 +143,29 @@ jobs:
         remote_key: ${{ secrets.HOSTINGER_PRIVATE_KEY }}
         remote_port: ${{ secrets.HOSTINGER_PORT }}
 
+    - name: Sync new images with WordPress Database
+      uses: appleboy/ssh-action@v0.1.8
+      with:
+        host: ${{ secrets.HOSTINGER_HOST }}
+        username: ${{ secrets.HOSTINGER_USERNAME }}
+        key: ${{ secrets.HOSTINGER_PRIVATE_KEY }}
+        port: ${{ secrets.HOSTINGER_PORT }}
+        script: |
+          cd ${{ env.DEPLOY_PATH }}
+          wp eval-file wordpress-image-sync.php
+
+    - name: Run migrations on target environment
+      uses: appleboy/ssh-action@v0.1.8
+      with:
+        host: ${{ secrets.HOSTINGER_HOST }}
+        username: ${{ secrets.HOSTINGER_USERNAME }}
+        key: ${{ secrets.HOSTINGER_PRIVATE_KEY }}
+        port: ${{ secrets.HOSTINGER_PORT }}
+        script: |
+          cd ${{ env.DEPLOY_PATH }}
+          chmod +x migrations.sh
+          ./migrations.sh ${{ env.DEPLOY_PATH }}
+
     - name: Build summary
       run: |
         echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
